@@ -2,7 +2,7 @@ import torch
 from langchain import HuggingFacePipeline
 from transformers import AutoModelForCausalLM, AutoTokenizer, GenerationConfig, pipeline, AutoModelForQuestionAnswering, BitsAndBytesConfig
 from huggingface_hub import login
-login(token = "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")
+login(token = "TOKEN")
 
 print("hello world")
 def llama2_model(prompt):
@@ -87,9 +87,9 @@ def code_llama_model(prompt):
     # ### Database Schema
     # This query will run on a Mongo Database with ORDERS document name, whose schema is represented in this string:
     
-    # {executedBy: "person who executes the trade", tradeDate: "when trade is happening", quantity: "quantity of the trades", notional: "nominal amount of the trade with currency", createdBy: "who created this record"}
+    # '''executedBy: {{"person who executes the trade", tradeDate: "when trade is happening", quantity: "quantity of the trades", notional: "nominal amount of the trade with currency", createdBy: "who created this record}}"'''
     
-    # An example of the Mongo Query would be 'db.vehicle.find({"createdBy": "James")})'
+    # An example of the Mongo Query would be 'db.vehicle.find({{"createdBy": "James"}})'
     
     # ### Mongo Query
     # Given the database schema, here is the Mongo query that answers `{question}`:
@@ -105,7 +105,45 @@ def code_llama_model(prompt):
     return generator(prompt)
 
 ###
-print(code_llama_model("Can you tell me about the orders which are completed two days ago?"))
+# print(code_llama_model("Can you tell me about the orders which are completed two days ago?"))
 
+
+
+def bloom_model(prompt):
+ 
+    model_id =  "bigscience/bloom-560m"
+    
+    model = AutoModelForCausalLM.from_pretrained(model_id, device_map="auto")
+    
+    tokenizer = AutoTokenizer.from_pretrained(model_id)
+    tokenizer.pad_token = tokenizer.eos_token
+    tokenizer.padding_side = "right"
+    eos_token_id = tokenizer.eos_token_id
+    
+    eval_prompt = """### Task
+    # Generate a MongoDB query to answer the following question:
+    # `{question}`
+    
+    # ### Database Schema
+    # This query will run on a Mongo Database with ORDERS document name, whose schema is represented in this string:
+    
+    # '''executedBy: {{"person who executes the trade", tradeDate: "when trade is happening", quantity: "quantity of the trades", notional: "nominal amount of the trade with currency", createdBy: "who created this record}}"'''
+    
+    # An example of the Mongo Query would be 'db.vehicle.find({{"createdBy": "James"}})'
+    
+    # ### Mongo Query
+    # Given the database schema, here is the Mongo query that answers `{question}`:
+    # ```mongo
+    # """.format(question=prompt)
+    
+    model_input = tokenizer(eval_prompt, return_tensors="pt")
+    
+    #model.eval()
+    outputs = tokenizer.batch_decode(model.generate(**model_input,eos_token_id=eos_token_id,pad_token_id=eos_token_id,max_new_tokens=100,do_sample=False,
+        num_beams=1), skip_special_tokens=True)
+    return outputs[0].split("```mongo")[-1]
+
+###
+print(bloom_model("Can you tell me about the orders which are completed two days ago?"))
 
 
