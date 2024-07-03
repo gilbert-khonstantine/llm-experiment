@@ -2,7 +2,10 @@ import torch
 from langchain import HuggingFacePipeline
 from transformers import AutoModelForCausalLM, AutoTokenizer, GenerationConfig, pipeline, AutoModelForQuestionAnswering, BitsAndBytesConfig
 from huggingface_hub import login
-login(token = "TOKEN")
+from dotenv import dotenv_values
+
+config = dotenv_values(".env")
+login(token = config.get("HUGGING_FACE_KEY"))
 
 print("hello world")
 def llama2_model(prompt):
@@ -144,6 +147,23 @@ def bloom_model(prompt):
     return outputs[0].split("```mongo")[-1]
 
 ###
-print(bloom_model("Can you tell me about the orders which are completed two days ago?"))
+# print(bloom_model("Can you tell me about the orders which are completed two days ago?"))
 
+def roberta_qna(context, question):
+    model_name = "deepset/roberta-base-squad2"
 
+    # a) Get predictions
+    nlp = pipeline('question-answering', model=model_name, tokenizer=model_name)
+    QA_input = {
+        'question': question,
+        'context': context
+    }
+    res = nlp(QA_input)
+
+    # b) Load model & tokenizer
+    # model = AutoModelForQuestionAnswering.from_pretrained(model_name)
+    # tokenizer = AutoTokenizer.from_pretrained(model_name)
+
+    return res
+
+print(roberta_qna('The option to convert models between FARM and transformers gives freedom to the user and let people easily switch between frameworks.',  'Why is model conversion important?'))
